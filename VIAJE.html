@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Itinerario 3D: Torredelcampo -> Praga</title>
+    
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; background: #000; }
+        
+        /* El Mapa ocupa toda la pantalla */
+        #map { height: 100vh; width: 100vw; }
+
+        /* Tarjeta Flotante (Panel de Control) */
+        .card-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50px;
+            transform: translateY(-50%);
+            width: 350px;
+            background: rgba(20, 20, 20, 0.85); /* Fondo oscuro elegante */
+            backdrop-filter: blur(15px);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            z-index: 1000;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 24px; color: #fff; }
+        h2 { font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px;}
+
+        .step-content { min-height: 120px; }
+        .step-title { font-size: 22px; color: #4dabf7; font-weight: bold; display: flex; align-items: center; gap: 12px; }
+        .step-desc { font-size: 15px; color: #ddd; line-height: 1.6; margin-top: 10px; font-weight: 300; }
+
+        /* Botones de Navegación */
+        .controls { display: flex; justify-content: space-between; margin-top: 30px; }
+        button {
+            background: #4dabf7; color: #000; border: none; padding: 12px 24px;
+            border-radius: 50px; cursor: pointer; font-weight: bold; transition: 0.2s;
+            display: flex; align-items: center; gap: 8px;
+            font-size: 14px;
+        }
+        button:hover { background: #fff; transform: scale(1.05); box-shadow: 0 0 15px rgba(77, 171, 247, 0.5); }
+        button:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* Iconos personalizados en el mapa */
+        .custom-marker {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            background: #2563eb;
+            border: 3px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+            cursor: pointer;
+        }
+        
+        /* Tooltips simples */
+        .mapboxgl-popup { color: #000; }
+        .mapboxgl-popup-content { border-radius: 10px; padding: 10px 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="card-overlay">
+        <h2>Itinerario Oficial: Enero 2026</h2>
+        <div id="step-info" class="step-content"></div>
+        
+        <div class="controls">
+            <button id="btn-prev" onclick="changeStep(-1)" disabled><i class="fas fa-arrow-left"></i> Anterior</button>
+            <button id="btn-next" onclick="changeStep(1)">Siguiente <i class="fas fa-arrow-right"></i></button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <script>
+        // ---------------------------------------------------------
+        // TU TOKEN DE MAPBOX (Ya integrado)
+        // ---------------------------------------------------------
+        mapboxgl.accessToken = 'pk.eyJ1IjoiYXNnYXJkMjUwNiIsImEiOiJjbWsxZ2duM2owNW84M2VzZDQ2NTF0ZTN2In0.icp5QA80TqOZw5slxg1ayQ'; 
+
+        // 1. Coordenadas
+        const coords = {
+            torredelcampo: [-3.9039, 37.7735], // Long, Lat
+            midwayCar: [-3.7, 39.1],
+            madrid: [-3.5676, 40.4983],
+            midwayFlight: [6.0, 45.5],
+            praga: [14.2632, 50.1018]
+        };
+
+        // 2. Configuración de los Pasos
+        const steps = [
+            {
+                title: "1. Salida: Torredelcampo",
+                desc: "Inicio de la aventura. Coche cargado. El mapa muestra la vista satelital detallada de la zona de salida.",
+                center: coords.torredelcampo,
+                zoom: 14,
+                pitch: 45, // Inclinación para efecto 3D
+                bearing: 0,
+                icon: "fa-car"
+            },
+            {
+                title: "2. Trayecto en Coche",
+                desc: "Rumbo norte hacia Madrid. Disfrutando del paisaje de la península desde las alturas.",
+                center: coords.midwayCar,
+                zoom: 6,
+                pitch: 20,
+                bearing: -10,
+                icon: "fa-road"
+            },
+            {
+                title: "3. Parking Madrid-Barajas",
+                desc: "Llegada a la T4. Dejamos el coche y tomamos el bus lanzadera a la terminal.",
+                center: coords.madrid,
+                zoom: 14.5,
+                pitch: 60,
+                bearing: -20,
+                icon: "fa-parking"
+            },
+            {
+                title: "4. Vuelo Directo",
+                desc: "Vuelo sobre Europa. Cruzamos los Alpes. Observa la curvatura de la Tierra.",
+                center: coords.midwayFlight,
+                zoom: 4,
+                pitch: 40,
+                bearing: 45,
+                icon: "fa-plane"
+            },
+            {
+                title: "5. Llegada a Praga",
+                desc: "Aterrizaje en República Checa. ¡Bienvenidos a vuestro destino!",
+                center: coords.praga,
+                zoom: 12,
+                pitch: 55,
+                bearing: 0,
+                icon: "fa-check-circle"
+            }
+        ];
+
+        // 3. Inicializar Mapa (Estilo Satélite + Globo)
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/satellite-streets-v12', // Estilo Satélite HD
+            projection: 'globe', // MODO TIERRA 3D
+            center: coords.torredelcampo,
+            zoom: 1.5,
+            pitch: 0,
+            bearing: 0
+        });
+
+        // 4. Añadir Atmósfera y Estrellas
+        map.on('style.load', () => {
+            map.setFog({
+                'color': 'rgb(186, 210, 235)', // Azul atmósfera
+                'high-color': 'rgb(36, 92, 223)', // Azul profundo
+                'horizon-blend': 0.02,
+                'space-color': 'rgb(11, 11, 25)', // Estrellas
+                'star-intensity': 0.6
+            });
+
+            // Añadir Líneas de Ruta
+            addRouteLines();
+        });
+
+        // 5. Función para dibujar las líneas
+        function addRouteLines() {
+            // Línea Coche (Azul Sólida)
+            map.addSource('route-car', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'properties': {},
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': [coords.torredelcampo, coords.madrid]
+                    }
+                }
+            });
+            map.addLayer({
+                'id': 'route-car',
+                'type': 'line',
+                'source': 'route-car',
+                'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                'paint': { 'line-color': '#4dabf7', 'line-width': 5 }
+            });
+
+            // Línea Avión (Roja Discontinua)
+            map.addSource('route-plane', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'properties': {},
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': [coords.madrid, coords.praga]
+                    }
+                }
+            });
+            map.addLayer({
+                'id': 'route-plane',
+                'type': 'line',
+                'source': 'route-plane',
+                'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                'paint': { 
+                    'line-color': '#ff4d4f', 
+                    'line-width': 5,
+                    'line-dasharray': [2, 2] // Punteado
+                }
+            });
+        }
+
+        // 6. Añadir Marcadores Personalizados
+        function addMarker(coordinates, iconClass, text) {
+            const el = document.createElement('div');
+            el.className = 'custom-marker';
+            el.innerHTML = `<i class="fas ${iconClass}"></i>`;
+
+            new mapboxgl.Marker(el)
+                .setLngLat(coordinates)
+                .setPopup(new mapboxgl.Popup({ offset: 25 }).setText(text))
+                .addTo(map);
+        }
+
+        addMarker(coords.torredelcampo, 'fa-home', 'Casa: Torredelcampo');
+        addMarker(coords.madrid, 'fa-plane-departure', 'Aeropuerto Madrid');
+        addMarker(coords.praga, 'fa-star', 'Praga (Destino)');
+
+        // 7. Lógica de Navegación (FlyTo)
+        let currentStep = 0;
+
+        function updateUI() {
+            const step = steps[currentStep];
+            
+            // UI Texto con fade
+            const infoDiv = document.getElementById('step-info');
+            infoDiv.style.opacity = 0;
+            setTimeout(() => {
+                infoDiv.innerHTML = `
+                    <div class="step-title"><i class="fas ${step.icon}"></i> ${step.title}</div>
+                    <div class="step-desc">${step.desc}</div>
+                `;
+                infoDiv.style.opacity = 1;
+            }, 200);
+
+            // UI Botones
+            document.getElementById('btn-prev').disabled = currentStep === 0;
+            document.getElementById('btn-next').disabled = currentStep === steps.length - 1;
+
+            // Vuelo de cámara cinematográfico
+            map.flyTo({
+                center: step.center,
+                zoom: step.zoom,
+                pitch: step.pitch,
+                bearing: step.bearing,
+                speed: 0.8,
+                curve: 1.5,
+                essential: true
+            });
+        }
+
+        function changeStep(direction) {
+            const next = currentStep + direction;
+            if (next >= 0 && next < steps.length) {
+                currentStep = next;
+                updateUI();
+            }
+        }
+
+        // Iniciar
+        map.on('load', () => {
+            updateUI();
+        });
+
+    </script>
+</body>
+</html>
